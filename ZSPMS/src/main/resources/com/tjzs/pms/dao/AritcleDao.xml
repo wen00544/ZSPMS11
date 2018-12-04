@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 指向dao接口  实现dao -->
+<mapper namespace="com.tjzs.pms.dao.AritcleDao">
+	
+	<!-- type : 类型 最外面的对象
+		id : 随便起
+	 -->
+	<resultMap type="TAritclePo" id="aritmap">
+	<!-- 
+		一对一关联
+		property:属性名
+		column:关联的字段名
+		select:关联执行的sql名称
+		执行完sql返回的对象赋值给属性dep
+	 -->
+	<association property="channel" column="channel" select="getChannel"/>
+	<!-- 
+		一对多关联
+		property:属性名
+		column:关联的字段名
+		select:关联执行的sql名称
+		执行完sql返回的对象赋值给属性dep
+	 -->
+	
+	</resultMap>
+	
+	
+		<!-- type : 类型 最外面的对象
+		id : 随便起
+	 -->
+	<resultMap type="TAritclePo" id="aritmap1">
+	<!-- 
+		一对一关联
+		property:属性名
+		column:关联的字段名
+		select:关联执行的sql名称
+		执行完sql返回的对象赋值给属性dep
+	 -->
+	<association property="channel" column="channel" select="getChannel"/>
+	<!-- 
+		一对多关联
+		property:属性名
+		column:关联的字段名
+		select:关联执行的sql名称
+		执行完sql返回的对象赋值给属性dep
+	 -->
+	
+	</resultMap>
+	
+	
+	<!-- 关联执行的sql 取部门
+	 parameterType: 参数的类型
+	 resultType：返回结果的类型
+	 -->	
+	<select id="getChannel" parameterType="int" resultType="TChannelPo">
+	select * from TCHANNEL  where id=#{channel}
+	</select>
+	<!-- 正常返回 -->
+	<select id="queryByCon" parameterType="QueryAritcle" resultType="TAritclePo">
+	<!-- 调用sal片段 -->
+		<include refid="selector"/>
+		<include refid="where"/>
+	</select>
+	
+	<!-- 
+	id:方法名 
+	parameterType：参数类型
+	resultMap：关联返回 -->
+	<select id="queryById" parameterType="int" resultMap="aritmap">
+		select * from TARTICLE where id=#{id}
+	</select>
+<!-- 查询总页数 -->
+	<select id="queryByCount" parameterType="QueryAritcle" resultType="int">
+		select count(1) from TARTICLE 
+		<include refid="where"/>
+	</select>
+	
+<!-- 查询分页 -->
+	<select id="queryByPage" parameterType="QueryAritcle" resultMap="aritmap1">
+	<!-- 调用sal片段 -->
+	select * from 
+	(select rownum rn,t.* 
+	from( 
+	<include refid="selector"/>
+	<include refid="where"/>
+	<include refid="order"/>
+	)t)t1
+	<include refid="page"/>
+	</select>	
+<!-- SQL片段 -->
+	<!-- 1查什么 -->
+	<sql id="selector">
+		select *from TARTICLE
+	</sql>
+	
+	<!-- 2查询条件 -->
+	<sql id="where">
+		<!-- 自动判断 -->
+		<where> 		
+		<!-- 判断字符串 -->
+			<if test="title!=null and title!=''">
+				 and title=#{title}
+			</if>
+			<if test="author!=null and author!=''">
+				and author=#{author}
+			</if>
+			<if test="isremod!=0">
+				and isremod=#{isremod}
+			</if>
+		</where>
+	</sql>
+	<!-- 3排序 -->
+		<sql id="order">
+		order by id desc
+		</sql>
+	<!--4 
+		分页
+		大于号和小于号进行转义
+		>:&gt;
+		<:&lt;
+	 -->
+	<sql id="page">
+		<where>
+			<if test="start!=0">
+				and rn&gt;=#{start}
+			</if>
+			<if test="end!=0">
+				and rn&lt;=#{end}
+			</if>
+		</where>
+	</sql>
+<!-- 新增 -->
+	<insert id="insert" parameterType="TAritclePo">
+		<!-- 主键 -->
+		<selectKey keyProperty="id" order="BEFORE" resultType="int">
+		select SEQ_ARITCLE.nextval from dual
+		</selectKey>
+		insert into TARTICLE(id,title, content, author,crtime,channel,isremod,ishot)
+		values(#{id},#{title},#{content},#{author},sysdate,#{channel.id},#{isremod},#{ishot})
+	</insert>
+<!-- 删除 -->
+	<delete id="delete" parameterType="int">
+		delete from TARTICLE where id=#{id}
+	</delete>
+<!-- 批量删除 -->
+	<delete id="deleteByIds">
+	delete from TARTICLE where id in
+	<!-- 
+	循环  拼串  （10,20）
+	collection： 数组类型
+	 item：临时变量 
+	 separator：分隔符
+	 open：以xxx开头 close：以xxx结束
+	 -->
+	<foreach collection="array" item="id" separator="," open="(" close=")">
+	#{id}
+	</foreach>
+	</delete>
+<!-- 修改 -->
+	<update id="update" parameterType="TAritclePo">
+	update  TARTICLE
+		<set>
+		<!-- 去掉最后一个 -->
+			<trim suffixOverrides=",">
+				<if test="title!=null and title!=''">
+				title=#{title},
+				</if>
+				<if test="content!=null and content!=''">
+				content=#{content},
+				</if>
+				<if test="author!=0">
+				author=#{author},
+				</if>
+				<if test="channel!=null">
+				channel=#{channel.id},<!--取栏目表的id  -->
+				</if>
+				<if test="isremod!=0">
+				isremod=#{isremod},
+				</if>
+				<if test="ishot!=0">
+				ishot=#{ishot},
+				</if>
+				
+				<if test="updator!=0">
+				updator=#{updator},
+				</if>
+			
+				<!-- 修改时间 定当前时间 -->
+				updatime=sysdate,
+			</trim>
+		</set>
+		where id=#{id}
+	</update>
+	
+	
+</mapper>
